@@ -3,16 +3,14 @@ use quick_xml::reader::Reader;
 use std::str::from_utf8;
 
 fn main() {
-    let xml = r#"<tag1 data-ui-id="test" data-ui-content="lol">
-                <tag2><!--Test comment-->Test</tag2>
-                <tag2 data-ui-id="test1" data-ui-content="lol1">Test 2</tag2>
-             </tag1>"#;
+    let parsed_attributes = vec!["data-ui-id", "data-ui-content"];
 
-    let result = parse(xml);
-    println!("{result}");
+    // let result = parse(xml);
+    // println!("{result}");
+    todo!()
 }
 
-fn parse(xml: &str) -> String {
+fn parse(parsed_attributes: Vec<&str>, xml: &str) -> String {
     let mut reader = Reader::from_str(xml);
     reader.trim_text(true);
     let mut buf = Vec::new();
@@ -25,10 +23,10 @@ fn parse(xml: &str) -> String {
             Ok(Event::Start(e)) => {
                 for attribute in e.attributes().into_iter() {
                     let key = from_utf8(attribute.as_ref().unwrap().key.into_inner()).unwrap();
-                    if key == "data-ui-id" || key == "data-ui-content" {
+                    if parsed_attributes.contains(&key) {
                         let value = attribute.unwrap().value;
                         let value = from_utf8(&value).unwrap();
-                        result.push(format!("[{}={}]", &key, &value));
+                        result.push(format!("[{}=\"{}\"]", &key, &value));
                     }
                 }
             }
@@ -40,4 +38,84 @@ fn parse(xml: &str) -> String {
         };
     }
     return result.concat();
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::parse;
+
+    #[test]
+    fn parse_top_level() {
+        let xml = r#"<tag1 data-ui-id="test" data-ui-content="lol">
+<tag2><!--Test comment-->Test</tag2>
+<tag2>Test 2</tag2>
+</tag1>"#;
+        let parsed_attributes = vec!["data-ui-id", "data-ui-content"];
+
+        assert_eq!(
+            parse(parsed_attributes, xml),
+            "[data-ui-id=\"test\"][data-ui-content=\"lol\"]"
+        )
+    }
+
+    #[test]
+    fn parse_lower_level() {
+        let xml = r#"<tag1>
+<tag2><!--Test comment-->Test</tag2>
+<tag2 data-ui-id="test" data-ui-content="lol">Test 2</tag2>
+</tag1>"#;
+        let parsed_attributes = vec!["data-ui-id", "data-ui-content"];
+
+        assert_eq!(
+            parse(parsed_attributes, xml),
+            "[data-ui-id=\"test\"][data-ui-content=\"lol\"]"
+        )
+    }
+
+    #[test]
+    fn parse_top_level_over_lower_level() {
+        let xml = r#"<tag1 data-ui-id="test" data-ui-content="lol">
+<tag2><!--Test comment-->Test</tag2>
+<tag2 data-ui-id="test1" data-ui-content="lol2">Test 2</tag2>
+</tag1>"#;
+        let parsed_attributes = vec!["data-ui-id", "data-ui-content"];
+
+        assert_eq!(
+            parse(parsed_attributes, xml),
+            "[data-ui-id=\"test\"][data-ui-content=\"lol\"]"
+        )
+    }
+
+    #[test]
+    fn parse_only_dui() {
+        let xml = r#"<tag1 data-ui-id="test">
+<tag2><!--Test comment-->Test</tag2>
+<tag2 data-ui-id="test1" data-ui-content="lol2">Test 2</tag2>
+</tag1>"#;
+        let parsed_attributes = vec!["data-ui-id", "data-ui-content"];
+
+        assert_eq!(parse(parsed_attributes, xml), "[data-ui-id=\"test\"]")
+    }
+
+    #[test]
+    fn parse_only_duc() {
+        let xml = r#"<tag1 data-ui-content="lol">
+<tag2><!--Test comment-->Test</tag2>
+<tag2 data-ui-id="test1" data-ui-content="lol2">Test 2</tag2>
+</tag1>"#;
+        let parsed_attributes = vec!["data-ui-id", "data-ui-content"];
+
+        assert_eq!(parse(parsed_attributes, xml), "[data-ui-content=\"lol\"]")
+    }
+
+    #[test]
+    fn nothing_found() {
+        let xml = r#"<tag1>
+<tag2><!--Test comment-->Test</tag2>
+<tag2>Test 2</tag2>
+</tag1>"#;
+        let parsed_attributes = vec!["data-ui-id", "data-ui-content"];
+
+        assert_eq!(parse(parsed_attributes, xml), "")
+    }
 }

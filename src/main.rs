@@ -1,16 +1,20 @@
+use clipboard::{ClipboardContext, ClipboardProvider};
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 use std::str::from_utf8;
 
 fn main() {
     let parsed_attributes = vec!["data-ui-id", "data-ui-content"];
-
-    // let result = parse(xml);
-    // println!("{result}");
-    todo!()
+    let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+    let xml = ctx.get_contents().unwrap();
+    let result = match parse(parsed_attributes, &xml) {
+        Ok(r) => r,
+        Err(_) => "Bruh".to_string(),
+    };
+    println!("{}", result);
 }
 
-fn parse(parsed_attributes: Vec<&str>, xml: &str) -> String {
+fn parse(parsed_attributes: Vec<&str>, xml: &str) -> Result<String, String> {
     let mut reader = Reader::from_str(xml);
     reader.trim_text(true);
     let mut buf = Vec::new();
@@ -34,10 +38,10 @@ fn parse(parsed_attributes: Vec<&str>, xml: &str) -> String {
         }
         buf.clear();
         if result.len() > 0 {
-            break;
+            return Ok(result.concat());
         };
     }
-    return result.concat();
+    return Err("Bruh".to_string());
 }
 
 #[cfg(test)]
@@ -53,7 +57,7 @@ mod tests {
         let parsed_attributes = vec!["data-ui-id", "data-ui-content"];
 
         assert_eq!(
-            parse(parsed_attributes, xml),
+            parse(parsed_attributes, xml).unwrap(),
             "[data-ui-id=\"test\"][data-ui-content=\"lol\"]"
         )
     }
@@ -67,7 +71,7 @@ mod tests {
         let parsed_attributes = vec!["data-ui-id", "data-ui-content"];
 
         assert_eq!(
-            parse(parsed_attributes, xml),
+            parse(parsed_attributes, xml).unwrap(),
             "[data-ui-id=\"test\"][data-ui-content=\"lol\"]"
         )
     }
@@ -81,7 +85,7 @@ mod tests {
         let parsed_attributes = vec!["data-ui-id", "data-ui-content"];
 
         assert_eq!(
-            parse(parsed_attributes, xml),
+            parse(parsed_attributes, xml).unwrap(),
             "[data-ui-id=\"test\"][data-ui-content=\"lol\"]"
         )
     }
@@ -94,7 +98,10 @@ mod tests {
 </tag1>"#;
         let parsed_attributes = vec!["data-ui-id", "data-ui-content"];
 
-        assert_eq!(parse(parsed_attributes, xml), "[data-ui-id=\"test\"]")
+        assert_eq!(
+            parse(parsed_attributes, xml).unwrap(),
+            "[data-ui-id=\"test\"]"
+        )
     }
 
     #[test]
@@ -105,7 +112,10 @@ mod tests {
 </tag1>"#;
         let parsed_attributes = vec!["data-ui-id", "data-ui-content"];
 
-        assert_eq!(parse(parsed_attributes, xml), "[data-ui-content=\"lol\"]")
+        assert_eq!(
+            parse(parsed_attributes, xml).unwrap(),
+            "[data-ui-content=\"lol\"]"
+        )
     }
 
     #[test]
@@ -116,6 +126,6 @@ mod tests {
 </tag1>"#;
         let parsed_attributes = vec!["data-ui-id", "data-ui-content"];
 
-        assert_eq!(parse(parsed_attributes, xml), "")
+        assert!(parse(parsed_attributes, xml).is_err())
     }
 }

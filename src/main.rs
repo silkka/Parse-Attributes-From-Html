@@ -7,11 +7,10 @@ fn main() {
     let parsed_attributes = vec!["data-ui-id", "data-ui-content"];
     let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
     let xml = ctx.get_contents().unwrap();
-    let result = match parse(parsed_attributes, &xml) {
-        Ok(r) => r,
-        Err(_) => "Bruh".to_string(),
+    match parse(parsed_attributes, &xml) {
+        Ok(r) => ctx.set_contents(r).unwrap(),
+        Err(_) => todo!(),
     };
-    println!("{}", result);
 }
 
 fn parse(parsed_attributes: Vec<&str>, xml: &str) -> Result<String, String> {
